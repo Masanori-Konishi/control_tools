@@ -12,68 +12,65 @@
 
 
 ;; (load "~/prog/hrp2/plugins/test-log-parser.l")
-(if (unix:getenv "OLD_HRPSYS") (warning-message 1 "!!!!!!!!!!Using Old hrpsys!!!!!!!!!!~%") (warning-message 3 "Using New hrpsys~%"))
+;; (if (unix:getenv "OLD_HRPSYS") (warning-message 1 "!!!!!!!!!!Using Old hrpsys!!!!!!!!!!~%") (warning-message 3 "Using New hrpsys~%"))
 
-(defmacro create-robot-interface (&optional (robot (read-from-string (string-downcase (unix:getenv "ROBOT")))))
-  (warning-message 3 "~%loading robot interface file (~a)...~%" robot)
-  (list
-   'progn
-   (list 'require
-         (read-from-string (format nil ":~a-interface" robot))
-         (read-from-string (format nil "\"package://hrpsys_ros_bridge_tutorials/euslisp/~a-interface.l\"" robot)))
-   (list (read-from-string (format nil "~a-init" robot)))
-   (list 'setq '*robot* (read-from-string (format nil "*~a*" robot)))
-   )
-  )
+;; (defmacro create-robot-interface (&optional (robot (read-from-string (string-downcase (unix:getenv "ROBOT")))))
+;;   (warning-message 3 "~%loading robot interface file (~a)...~%" robot)
+;;   (list
+;;    'progn
+;;    (list 'require
+;;          (read-from-string (format nil ":~a-interface" robot))
+;;          (read-from-string (format nil "\"package://hrpsys_ros_bridge_tutorials/euslisp/~a-interface.l\"" robot)))
+;;    (list (read-from-string (format nil "~a-init" robot)))
+;;    (list 'setq '*robot* (read-from-string (format nil "*~a*" robot)))
+;;    )
+;;   )
 
-(if (not (unix:getenv "OLD_HRPSYS"))
-    (progn ;; new hrpsys
-      (setq robot-string (unix:getenv "ROBOT"))
-      (if robot-string
-          (progn
-            (setq interface-file-path (format nil (ros::resolve-ros-path "package://hrpsys_ros_bridge_tutorials/euslisp/~a-interface.l") (read-from-string (string-downcase robot-string))))
-            (if (probe-file interface-file-path)
-                (unless (boundp '*robot*) (create-robot-interface))
-              (progn
-                (warning-message 1 "~a not exists~%" interface-file-path)
-                (setq *servo-state-msg* nil))
-            ))
-        (warning-message 1 "Please set ROBOT variable for (create-robot-interface)~%")
-        ))
-  (when (not (boundp '*hrp2*)) (setup-model-for-hrp2) (setq *robot* *hrp2*)  );; old hrpsys
-  )
+;; (if (not (unix:getenv "OLD_HRPSYS"))
+;;     (progn ;; new hrpsys
+;;       (setq robot-string (unix:getenv "ROBOT"))
+;;       (if robot-string
+;;           (progn
+;;             (setq interface-file-path (format nil (ros::resolve-ros-path "package://hrpsys_ros_bridge_tutorials/euslisp/~a-interface.l") (read-from-string (string-downcase robot-string))))
+;;             (if (probe-file interface-file-path)
+;;                 (unless (boundp '*robot*) (create-robot-interface))
+;;               (progn
+;;                 (warning-message 1 "~a not exists~%" interface-file-path)
+;;                 (setq *servo-state-msg* nil))
+;;             ))
+;;         (warning-message 1 "Please set ROBOT variable for (create-robot-interface)~%")
+;;         ))
+;;   (when (not (boundp '*hrp2*)) (setup-model-for-hrp2) (setq *robot* *hrp2*)  );; old hrpsys
+;;   )
 
 ;; 実機かシミュレーションか判定
 (defun is-simulation ()
-  (if (ros::get-param "use_sim_time" nil) t nil))
+  ;(if (ros::get-param "use_sim_time" nil) t nil)
+  t
+  )
 
 (defun is-choreonoid ()
-  (and (is-simulation) (> (read-from-string (read-line (piped-fork "rtls localhost:15005/ -l |grep HEAD | wc -l"))) 0)))
+  ;(and (is-simulation) (> (read-from-string (read-line (piped-fork "rtls localhost:15005/ -l |grep HEAD | wc -l"))) 0))
+  t
+  )
 
-(ros::roseus "play-hrpsysfile.l")
-(ros::load-ros-manifest "trans_ros_bridge")
-
-(load "log-tools.l")
-
-(defvar *usage-funcs* nil)
-(unless (assoc :play-hrpsysfile *usage-funcs*)
-  (push (cons :play-hrpsysfile
-              #'(lambda ()
-                  (warn "~%play-hrpsysfile.l~%")
-                  ;; (warning-message 3 "(setup-real-for-hrp2)~%")
-                  (warning-message 3 "(create-robot-interface jaxon)~%")
-                  (warning-message 3 "(scale-hrpsysfile :fname <FILE NAME>)~%")
-                  (warning-message 3 "(copy-files :fname <FILE NAME> :sample-name <SAMPLE NAME> :real t)~%")
-                  (warning-message 3 "(prepare-experiment :start-st t :set-pose t :st-algorithm :eefmqpcop2)~%")
-                  (warning-message 3 "(init-pose :fname <FILE NAME> :sample-name <SAMPLE NAME> :real t)~%")
-                  (warning-message 3 "(play-hrpsysfile :fname <FILE NAME> :sample-name <SAMPLE NAME> :use-init-file nil :real t)~%")
-                  (warning-message 3 "(save-log :fname <FILE NAME> :add-fname <FILE NAME OPTION> :log-dir <log directory name from ${HOME}>)~%")
-                  (warn "~%")
-                  (warning-message 3 "(set-pgain <l-crotch dgain>)~%")
-                  (warning-message 3 "(set-dgain <l-crotch dgain>)~%")
-                  (warn "~%"))) *usage-funcs*))
-
-(usage)
+;; (defvar *usage-funcs* nil)
+;; (unless (assoc :play-hrpsysfile *usage-funcs*)
+;;   (push (cons :play-hrpsysfile
+;;               #'(lambda ()
+;;                   (warn "~%play-hrpsysfile.l~%")
+;;                   ;; (warning-message 3 "(setup-real-for-hrp2)~%")
+;;                   (warning-message 3 "(create-robot-interface jaxon)~%")
+;;                   (warning-message 3 "(scale-hrpsysfile :fname <FILE NAME>)~%")
+;;                   (warning-message 3 "(copy-files :fname <FILE NAME> :sample-name <SAMPLE NAME> :real t)~%")
+;;                   (warning-message 3 "(prepare-experiment :start-st t :set-pose t :st-algorithm :eefmqpcop2)~%")
+;;                   (warning-message 3 "(init-pose :fname <FILE NAME> :sample-name <SAMPLE NAME> :real t)~%")
+;;                   (warning-message 3 "(play-hrpsysfile :fname <FILE NAME> :sample-name <SAMPLE NAME> :use-init-file nil :real t)~%")
+;;                   (warning-message 3 "(save-log :fname <FILE NAME> :add-fname <FILE NAME OPTION> :log-dir <log directory name from ${HOME}>)~%")
+;;                   (warn "~%")
+;;                   (warning-message 3 "(set-pgain <l-crotch dgain>)~%")
+;;                   (warning-message 3 "(set-dgain <l-crotch dgain>)~%")
+;;                   (warn "~%"))) *usage-funcs*))
 
 ;; (if (not (boundp '*ci*)) (setup-real-for-hrp2))
 
@@ -146,9 +143,9 @@
 
 ;; 関節角速度ファイル作成
 ;; 自分のPCから実行
-(defun copy-files (&key (fname "SampleMotion") (ofname nil) (real t) (plugin t) (sample-name "ShuffleSample") (remove-last-row t))
+(defun copy-files (&key (fname "SampleMotion") (ofname nil) (real t) (plugin nil) (sample-name "ShuffleSample") (remove-last-row t) (path path))
   (let ( motionname
-         zmpline velfile optfile posfile zmpfile path
+         zmpline velfile optfile posfile zmpfile
          ;; (extention-list '("pos" "hip" "waist" "zmp" "vel" "optionaldata" "wrenches"))
          (extention-list '("pos" "waist" "zmp" "hip" "optionaldata" "wrenches"))
          )
@@ -160,7 +157,7 @@
     (setq motionname fname)
     (if plugin
       (setq path (concatenate string (ros::resolve-ros-path "package://jsk_choreonoid") "sample/" sample-name "/"))
-      (setq path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/")))
+      )
     (setq hipfile (concatenate string path fname ".hip")
           posfile (concatenate string path fname ".pos")
           waistfile (concatenate string path fname ".waist")
@@ -210,7 +207,8 @@
 
 (defun prepare-experiment (&key (start-st t) (st-algorithm :eefmqpcop2) (set-pose t) (delay-vec #f(0.055 0.055)) (zmp-offset #f(0 0 0)))
   (warn "(prepare-experiment)~%")
-  (when (= (send (send *ri* :get-auto-balancer-param) :controller_mode) 1)
+  ;; (when (= (send (send *ri* :get-auto-balancer-param) :controller_mode) 1)
+  (when t
     (warn "stop-st~%")
     (send *ri* :stop-st)
     ;; (unix:sleep 1)
@@ -225,34 +223,34 @@
   (send *robot* :angle-vector (send *ri* :state :potentio-vector))
   (when set-pose (set-current-pose :tm 2 :wait t :zmp-offset zmp-offset))
 
-  (unless (eq (send *ri* :get-st-algorithm) st-algorithm)
-    (warn "stop-st for change st-algorithm~%")
-    (send *ri* :stop-st)
-    (warn "set st-algorithm to ~s~%" st-algorithm)
-    (send *ri* :set-st-param :st-algorithm st-algorithm))
-  (send *ri* :set-st-param :eefm-ee-forcemoment-distribution-weight
-        (list #f(0 0 1 1 1 0) #f(0 0 1 1 1 0) #f(0 0 0 0 0 0) #f(0 0 0 0 0 0)))
-  (unless (= (send (send *ri* :get-st-param) :emergency_check_mode) 0)
-    (warn "disable emergency-check~%")
-    (send *ri* :set-st-param :emergency-check-mode 0))
+  ;; (unless (eq (send *ri* :get-st-algorithm) st-algorithm)
+  ;;   (warn "stop-st for change st-algorithm~%")
+  ;;   (send *ri* :stop-st)
+  ;;   (warn "set st-algorithm to ~s~%" st-algorithm)
+  ;;   (send *ri* :set-st-param :st-algorithm st-algorithm))
+  ;; (send *ri* :set-st-param :eefm-ee-forcemoment-distribution-weight
+  ;;       (list #f(0 0 1 1 1 0) #f(0 0 1 1 1 0) #f(0 0 0 0 0 0) #f(0 0 0 0 0 0)))
+  ;; (unless (= (send (send *ri* :get-st-param) :emergency_check_mode) 0)
+  ;;   (warn "disable emergency-check~%")
+  ;;   (send *ri* :set-st-param :emergency-check-mode 0))
 
-  ;; jump setting
-  (send *ri* :set-st-param :eefm-use-force-difference-control nil)
-  (send *ri* :set-st-param :detection-time-to-air 1.0)
-  ;; (send *ri* :set-st-param :emergency-check-mode 0)
+  ;; ;; jump setting
+  ;; (send *ri* :set-st-param :eefm-use-force-difference-control nil)
+  ;; (send *ri* :set-st-param :detection-time-to-air 1.0)
+  ;; ;; (send *ri* :set-st-param :emergency-check-mode 0)
 
-  ;; (warn "set eefm-zmp-delay-time-const ~s~%" delay-vec)
-  ;; (send *ri* :set-st-param :eefm-zmp-delay-time-const delay-vec)
+  ;; ;; (warn "set eefm-zmp-delay-time-const ~s~%" delay-vec)
+  ;; ;; (send *ri* :set-st-param :eefm-zmp-delay-time-const delay-vec)
 
-  (send *ri* :set-log-maxlength (* 500 25))
-  (if start-st
-      (when (and (or (not (is-simulation)) (is-choreonoid)))
-        (warn "start-st~%")
-        (send *ri* :start-st)
-        (unix:sleep 3))
-    (progn
-      (warn "stop-st~%")
-      (send *ri* :stop-st)))
+  ;; (send *ri* :set-log-maxlength (* 500 25))
+  ;; (if start-st
+  ;;     (when (and (or (not (is-simulation)) (is-choreonoid)))
+  ;;       (warn "start-st~%")
+  ;;       (send *ri* :start-st)
+  ;;       (unix:sleep 3))
+  ;;   (progn
+  ;;     (warn "stop-st~%")
+  ;;     (send *ri* :stop-st)))
   )
 
 (defun get-motion-time (path fname)
@@ -263,7 +261,7 @@
   (let ( (support-vertices (send (send *robot* :support-polygon '(:lleg :rleg)) :vertices)) )
     (float-vector (* 0.5 (+ (apply #'min (mapcar #'(lambda (x) (elt x 0)) support-vertices)) (apply #'max (mapcar #'(lambda (x) (elt x 0)) support-vertices)))) 0 0)))
 
-(defun play-hrpsysfile-impl (&key fname (real t) (tm 5) (save-log t) (save-shm-log nil) (plugin t) (use-init-file nil) (start-st t) (set-pose t) (add-fname nil) (zmp-offset nil)
+(defun play-hrpsysfile-impl (&key fname (real t) (tm 5) (save-log t) (save-shm-log nil) (plugin nil) (use-init-file nil) (start-st t) (set-pose t) (add-fname nil) (zmp-offset nil)
                                   (sample-name "ShuffleSample") (st-algorithm :eefmqpcop2) (prepare t) (wait-key t))
   (let (path local-path motion-time)
    (if plugin
@@ -397,14 +395,13 @@
 ;;     ))
 
 ;; モーションの初期姿勢へ遷移 (hrpsysシーケンスファイルの1行目のみを実行)
-(defun init-pose (&key (fname "SampleMotion") (tm 10) (real t) (plugin t) (sample-name "ShuffleSample") (wait nil))
-  (let* ( (motionname (car (reg-split "_"  fname))) (path) )
-    (warn "(init-pose) now moving to initial pose of ~s's ~s in ~s sec~%" sample-name fname tm)
+(defun init-pose (&key (fname "SampleMotion") (tm 10) (real t) (plugin nil) (sample-name "ShuffleSample") (wait nil) (path path))
+  (let* ( (motionname (car (reg-split "_"  fname))))
+    ;(warn "(init-pose) now moving to initial pose of ~s's ~s in ~s sec~%" sample-name fname tm)
 
     (if plugin
       (setq path (concatenate string (ros::resolve-ros-path "package://jsk_choreonoid") "sample/" sample-name "/"))
-      (setq path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/")))
-
+      )
     ;; (setq contact-state-list (get-init-contact-state path fname))
     ;; (set-current-pose :contact-state-list '(1 1 0 0) :leg-option :lleg :tm 5 :zmp-offset #f(0 -10 0))
     ;; (warn "now moving centroid on foot of init pose's contact state by load-pattern~%")
@@ -419,7 +416,7 @@
           (list "waist" "hip" "zmp" "pos" "optionaldata" "wrenches") )
 
     ;; fname_init->_fname_init
-    (copy-files :fname (concatenate string fname "_init") :sample-name sample-name :real real :remove-last-row nil)
+    (copy-files :fname (concatenate string fname "_init") :sample-name sample-name :real real :remove-last-row nil :path path)
 
     (when real
       (cond
@@ -665,10 +662,37 @@
   (when (and (not (is-simulation)) (unix:getenv "ROBOT"))
     (when (not (boundp '*servo-state-msg*))
       (warning-message 2 "subscribe /shm_servo_state~%")
-      (ros::subscribe "/shm_servo_state"  trans_ros_bridge::ServoState #'(lambda (msg) (setq *servo-state-msg* msg)))
+      ;(ros::subscribe "/shm_servo_state"  trans_ros_bridge::ServoState #'(lambda (msg) (setq *servo-state-msg* msg)))
       )
     (warn "spin-once while not boundp servo-state-msg~%")
     (while (not (boundp '*servo-state-msg*)) (ros::spin-once))
     )
   )
-(init-play-hrpsysfile)
+
+(defun prev-init()
+  (usage)
+  (ros::roseus "play-hrpsysfile.l")
+  ;(ros::load-ros-manifest "trans_ros_bridge")
+  (load "log-tools.l")
+  (init-play-hrpsysfile)
+  )
+
+(defun blue-init()
+  (load "package://hrpsys_ros_bridge_tutorials/euslisp/jaxon_blue-interface.l")
+  (load "package://auto_stabilizer/euslisp/auto-stabilizer-interface.l")
+  (load "package://control_tools/euslib-tools.l")
+  (jaxon_blue-init)
+  (setq *robot* *jaxon_blue*)
+  (objects (list *robot*)))
+
+(defun start-ast()
+  (send *ri* :start-auto-balancer)
+  (send *ri* :start-st)
+  )
+
+(defun jump-test()
+  (init-pose :path "/home/konishi/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/" :fname "jump-150msec" :plugin nil)
+  (read-line)
+(send *ri* :load-pattern "/home/konishi/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/jump-150msec")
+
+  )

@@ -46,12 +46,12 @@
 ;; 実機かシミュレーションか判定
 (defun is-simulation ()
   ;(if (ros::get-param "use_sim_time" nil) t nil)
-  t
+  nil
   )
 
 (defun is-choreonoid ()
   ;(and (is-simulation) (> (read-from-string (read-line (piped-fork "rtls localhost:15005/ -l |grep HEAD | wc -l"))) 0))
-  t
+  nil
   )
 
 ;; (defvar *usage-funcs* nil)
@@ -93,22 +93,22 @@
     ))
 
 ;; servo-state判定
-(defun get-servo-states (&key (print nil))
-  (ros::spin-once)
+;; (defun get-servo-states (&key (print nil))
+;;   (ros::spin-once)
 
-  (let (servo-states)
-    (setq servo-states (coerce (send *servo-state-msg* :states) cons))
-    (when print (warning-message 3 "servo-states: ") (mapc #'(lambda (val) (warning-message 3 " 0x~0,4X" val)) servo-states) (warn "~%"))
-    servo-states
-    )
-  )
+;;   (let (servo-states)
+;;     (setq servo-states (coerce (send *servo-state-msg* :states) cons))
+;;     (when print (warning-message 3 "servo-states: ") (mapc #'(lambda (val) (warning-message 3 " 0x~0,4X" val)) servo-states) (warn "~%"))
+;;     servo-states
+;;     )
+;;   )
 
-(defun is-servo-off (&key (print nil))
-  (if (is-simulation)
-      nil ;; always servo-on in simulation
-    (find t (mapcar #'(lambda (state) (not (zerop (logand state #X0800)))) (get-servo-states :print print)))
-    )
-  )
+;; (defun is-servo-off (&key (print nil))
+;;   (if (is-simulation)
+;;       nil ;; always servo-on in simulation
+;;     (find t (mapcar #'(lambda (state) (not (zerop (logand state #X0800)))) (get-servo-states :print print)))
+;;     )
+;;   )
 
 ;; posファイルの関節数を修正する
 (defun modify-posfile (path fname)
@@ -211,13 +211,13 @@
   (when t
     (warn "stop-st~%")
     (send *ri* :stop-st)
-    ;; (unix:sleep 1)
+    (unix:sleep 1)
     (warn "stop-auto-balancer~%")
     (send *ri* :stop-auto-balancer)
-    ;; (unix:sleep 1)
+    (unix:sleep 1)
     (warn "stop-impedance~%")
     (send *ri* :stop-impedance :arms)
-    ;; (unix:sleep 1)
+    (unix:sleep 1)
     )
 
   (send *robot* :angle-vector (send *ri* :state :potentio-vector))
@@ -266,7 +266,9 @@
   (let (path local-path motion-time)
    (if plugin
        (setq local-path (concatenate string (ros::resolve-ros-path "package://jsk_choreonoid") "sample/" sample-name "/"))
-     (setq local-path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/")))
+     (setq local-path (concatenate string "/home/" (unix::getenv "USER") "/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/"))
+     ;(setq local-path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/"))
+     )
 
   (setq *__fname__* (reg-replace* "^_" "" fname));; _fname->fname
   (setq motion-time (get-motion-time local-path *__fname__*))
@@ -277,39 +279,44 @@
   (if use-init-file
       (let ((__init-fname__ (concatenate string *__fname__* "-init"));; fname-init
             (init-fname (concatenate string fname "-init")));; _fname-init
-        (copy-files :fname __init-fname__ :sample-name sample-name :real t)
+        (copy-files :fname __init-fname__ :sample-name sample-name :real t :path local-path)
         (warn "now moving to initial pose by .pseq file~%")
         (send *ri* :load-pattern (concatenate string path init-fname) 3)
         (unix:sleep 3)
         )
-    (init-pose :fname *__fname__* :sample-name sample-name :real t :wait t :tm tm));; tm sec
+    (init-pose :fname *__fname__* :sample-name sample-name :real t :wait t :tm tm :path local-path)
+    );; tm sec
 
   ;; (warning-message 3 "Push Enter to start~%")
   ;; (do-until-key)
-  (if (or (= (send *ri* :state :emergency-mode) 0) (not (send *ri* :state :emergency-mode)));; emergency-mode-off or st-off
+  ;; (if (or (= (send *ri* :state :emergency-mode) 0) (not (send *ri* :state :emergency-mode)));; emergency-mode-off or st-off
+  (if  (not (send *ri* :state :emergency-mode));; emergency-mode-off or st-off
       (progn
         (warning-message 3 "Push y to start or n to resign~%")
         (when (or (not wait-key) (y-or-n-p))
-          (when save-log
-            (warn "start-log~%")
-            (send *ri* :start-log))
+          ;; (when save-log
+          ;;   (warn "start-log~%")
+          ;;   (send *ri* :start-log))
           (when real
             (warn "load-pattern~%")
             (setq path "/tmp/")
-            (send *ri* :load-pattern (concatenate string path fname) 1) );; default 1sec in load-pattern?
+            (copy-files :fname *__fname__* :sample-name sample-name :real t :path local-path)
+            (print (concatenate string path fname))
+            (send *ri* :load-pattern (concatenate string path "_" fname) 1) );; default 1sec in load-pattern?
           (setq sleep-time 1)
           (warn "sleep ~a[sec] before initial pose~%" sleep-time);; 1sec
           (unix:sleep sleep-time)
 
           (setq sleep-time (round (+ 2 motion-time)))
-          (when save-log
-            (warn "sleep ~a[sec] during motion~%" sleep-time)
-            (unix:sleep sleep-time)
-            (save-log :add-fname add-fname :save-shm-log save-shm-log))
+          ;; (when save-log
+          ;;   (warn "sleep ~a[sec] during motion~%" sleep-time)
+          ;;   (unix:sleep sleep-time)
+          ;;   (save-log :add-fname add-fname :save-shm-log save-shm-log))
           ))
     (warning-message 1 "Please release emergency~%")
     )
-  ))
+    ))
+  )
 
 (defun play-hrpsysfile (&rest args)
   (when (boundp '*ci*) (apply #'play-hrpsysfile-old args))
@@ -690,9 +697,55 @@
   (send *ri* :start-st)
   )
 
-(defun jump-test()
-  (init-pose :path "/home/konishi/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/" :fname "jump-150msec" :plugin nil)
-  (read-line)
-(send *ri* :load-pattern "/home/konishi/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/jump-150msec")
+(defun stop-ast()
+  (send *ri* :stop-auto-balancer)
+  (send *ri* :stop-st)
+  )
 
+(defun jump-test-old(&key (path "/home/konishi/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/") (fname "JAXON_BLUE_jump-150msec") (log-path "/home/konishi/log/log_blue/") (log-name "jump-test"))
+  (setq log-path "/home/leus/konishi_log/jump_150msec")
+  (unix::system (concatenate string "mkdir " log-path log-name))
+  (print "start-log and go to the init-pose")
+  (send *ri* :start-log)
+  (unix::sleep 1)
+  (init-pose :path path :fname fname)
+  (print (concatenate string "do you want to execute" fname "? (yes/no)"))
+  (if (equal "yes" (read-line))
+      (send *ri* :load-pattern (concatenate string path fname)))
+  ;; (print "do you want to execute save-log ? (yes/no)")
+  ;; (if (equal "yes" (read-line))
+  ;;     (send *ri* :save-log (concatenate string log-path log-name)))
+  (print "do you want to go to reset-pose ? (yes/no)")
+  (if (equal "yes" (read-line))
+      (send *ri* :angle-vector (send *robot* :reset-pose))
+    )
+  )
+
+;; blue-init
+;; start-auto-balancer
+;; start-st
+;; prepare-experiment
+;; check crane
+;; start-log
+;; jump-test
+;; save-log
+;; reset-pose
+
+(defun jump-test(&key (local-path "/home/konishi/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/") (fname "JAXON_BLUE_jump-150msec") (log-path "/home/konishi/log/log_blue/") (log-name "jump-test"))
+  (setq log-path "/home/leus/konishi_log/jump_150msec")
+                                        ;(unix::system (concatenate string "mkdir " log-path log-name))
+                                        ;(send *ri* :start-log)
+  (unix::sleep 1)
+  (print (concatenate string "do you want to execute" fname "? (yes/no)"))
+  (if (equal "yes" (read-line))
+                                        ;(send *ri* :load-pattern (concatenate string path fname)))
+      (play-hrpsysfile-impl :fname "JAXON_BLUE_jump-150msec" :start-st nil)
+      (print "do you want to execute save-log ? (yes/no)")
+      (if (equal "yes" (read-line))
+          (send *ri* :save-log (concatenate string log-path log-name)))
+      (print "do you want to go to reset-pose ? (yes/no)")
+      (if (equal "yes" (read-line))
+          (send *ri* :angle-vector (send *robot* :reset-pose))
+        )
+      )
   )

@@ -146,9 +146,9 @@
 
 ;; 関節角速度ファイル作成
 ;; 自分のPCから実行
-(defun copy-files (&key (fname "SampleMotion") (ofname nil) (real t) (plugin t) (sample-name "ShuffleSample") (remove-last-row t))
+(defun copy-files (&key (fname "SampleMotion") (ofname nil) (real t) (plugin t) (sample-name "ShuffleSample") (remove-last-row t) (path nil))
   (let ( motionname
-         zmpline velfile optfile posfile zmpfile path
+         zmpline velfile optfile posfile zmpfile
          ;; (extention-list '("pos" "hip" "waist" "zmp" "vel" "optionaldata" "wrenches"))
          (extention-list '("pos" "waist" "zmp" "hip" "optionaldata" "wrenches"))
          )
@@ -160,7 +160,8 @@
     (setq motionname fname)
     (if plugin
       (setq path (concatenate string (ros::resolve-ros-path "package://jsk_choreonoid") "sample/" sample-name "/"))
-      (setq path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/")))
+      ;; (setq path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/"))
+      )
     (setq hipfile (concatenate string path fname ".hip")
           posfile (concatenate string path fname ".pos")
           waistfile (concatenate string path fname ".waist")
@@ -264,11 +265,12 @@
     (float-vector (* 0.5 (+ (apply #'min (mapcar #'(lambda (x) (elt x 0)) support-vertices)) (apply #'max (mapcar #'(lambda (x) (elt x 0)) support-vertices)))) 0 0)))
 
 (defun play-hrpsysfile-impl (&key fname (real t) (tm 5) (save-log t) (save-shm-log nil) (plugin t) (use-init-file nil) (start-st t) (set-pose t) (add-fname nil) (zmp-offset nil)
-                                  (sample-name "ShuffleSample") (st-algorithm :eefmqpcop2) (prepare t) (wait-key t))
-  (let (path local-path motion-time)
+                                  (sample-name "ShuffleSample") (st-algorithm :eefmqpcop2) (prepare t) (wait-key t) (path nil))
+  (let (local-path motion-time)
    (if plugin
        (setq local-path (concatenate string (ros::resolve-ros-path "package://jsk_choreonoid") "sample/" sample-name "/"))
-     (setq local-path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/")))
+     ;; (setq local-path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/"))
+     )
 
   (setq *__fname__* (reg-replace* "^_" "" fname));; _fname->fname
   (setq motion-time (get-motion-time local-path *__fname__*))
@@ -279,12 +281,12 @@
   (if use-init-file
       (let ((__init-fname__ (concatenate string *__fname__* "-init"));; fname-init
             (init-fname (concatenate string fname "-init")));; _fname-init
-        (copy-files :fname __init-fname__ :sample-name sample-name :real t)
+        (copy-files :fname __init-fname__ :sample-name sample-name :real t :plugin nil)
         (warn "now moving to initial pose by .pseq file~%")
         (send *ri* :load-pattern (concatenate string path init-fname) 3)
         (unix:sleep 3)
         )
-    (init-pose :fname *__fname__* :sample-name sample-name :real t :wait t :tm tm));; tm sec
+    (init-pose :fname *__fname__* :sample-name sample-name :real t :wait t :tm tm  :path path :plugin plugin));; tm sec
 
   ;; (warning-message 3 "Push Enter to start~%")
   ;; (do-until-key)
@@ -397,13 +399,14 @@
 ;;     ))
 
 ;; モーションの初期姿勢へ遷移 (hrpsysシーケンスファイルの1行目のみを実行)
-(defun init-pose (&key (fname "SampleMotion") (tm 10) (real t) (plugin t) (sample-name "ShuffleSample") (wait nil))
-  (let* ( (motionname (car (reg-split "_"  fname))) (path) )
+(defun init-pose (&key (fname "SampleMotion") (tm 10) (real t) (plugin t) (sample-name "ShuffleSample") (wait nil) (path nil))
+  (let* ( (motionname (car (reg-split "_"  fname))) )
     (warn "(init-pose) now moving to initial pose of ~s's ~s in ~s sec~%" sample-name fname tm)
 
     (if plugin
-      (setq path (concatenate string (ros::resolve-ros-path "package://jsk_choreonoid") "sample/" sample-name "/"))
-      (setq path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/")))
+        (setq path (concatenate string (ros::resolve-ros-path "package://jsk_choreonoid") "sample/" sample-name "/"))
+      ;; (setq path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/"))
+      )
 
     ;; (setq contact-state-list (get-init-contact-state path fname))
     ;; (set-current-pose :contact-state-list '(1 1 0 0) :leg-option :lleg :tm 5 :zmp-offset #f(0 -10 0))
@@ -413,13 +416,14 @@
     ;; (warn "change contact state by load-pattern~%")
 
     ;;fname->fname_init
-    (mapc #'(lambda (extemtion)
-              (unix:system (concatenate string "head -n 1 " path fname "." extemtion "| cat >  " path fname "_init." extemtion)) )
+    (mapc #'(lambda (extention)
+              (unix:system (concatenate string "head -n 1 " path fname "." extention "| cat >  " path fname "_init." extention)) )
           ;; (list "hip" "waist" "zmp" "vel" "pos" "optionaldata" "wrenches")
           (list "waist" "hip" "zmp" "pos" "optionaldata" "wrenches") )
 
+
     ;; fname_init->_fname_init
-    (copy-files :fname (concatenate string fname "_init") :sample-name sample-name :real real :remove-last-row nil)
+    (copy-files :fname (concatenate string fname "_init") :sample-name sample-name :real real :remove-last-row nil :path path :plugin nil)
 
     (when real
       (cond
@@ -671,4 +675,18 @@
     (while (not (boundp '*servo-state-msg*)) (ros::spin-once))
     )
   )
+
+(defun sample-jump()
+  (init-pose :path "/home/konishi/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/" :fname "jump-toe-200msec" :plugin nil)
+  (send *ri* :load-pattern "/home/konishi/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/jump-toe-200msec")
+  )
+
+(defun log-5sec()
+  (send *ri* :start-log)
+  (unix::sleep 2)
+  (send *ri* :start-st)
+  (unix::sleep 6)
+  (send *ri* :save-log "/home/konishi/log/log_blue/som_sim_st/som_sim_abc_st")
+  )
+
 (init-play-hrpsysfile)

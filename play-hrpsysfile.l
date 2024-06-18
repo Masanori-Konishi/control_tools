@@ -46,12 +46,12 @@
 ;; 実機かシミュレーションか判定
 (defun is-simulation ()
   ;(if (ros::get-param "use_sim_time" nil) t nil)
-  nil
+  t
   )
 
 (defun is-choreonoid ()
   ;(and (is-simulation) (> (read-from-string (read-line (piped-fork "rtls localhost:15005/ -l |grep HEAD | wc -l"))) 0))
-  nil
+  t
   )
 
 ;; (defvar *usage-funcs* nil)
@@ -263,14 +263,17 @@
 
 (defun play-hrpsysfile-impl (&key fname (real t) (tm 5) (save-log t) (save-shm-log nil) (plugin nil) (use-init-file nil) (start-st t) (set-pose t) (add-fname nil) (zmp-offset nil)
                                   (sample-name "ShuffleSample") (st-algorithm :eefmqpcop2) (prepare t) (wait-key t))
+  (print "play-hrpsysfile-impl")
   (let (path local-path motion-time)
-   (if plugin
-       (setq local-path (concatenate string (ros::resolve-ros-path "package://jsk_choreonoid") "sample/" sample-name "/"))
-     (setq local-path (concatenate string "/home/" (unix::getenv "USER") "/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/"))
-     ;(setq local-path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/"))
-     )
+    ;; (if plugin
+    ;;     (setq local-path (concatenate string (ros::resolve-ros-path "package://jsk_choreonoid") "sample/" sample-name "/"))
+    ;;   (setq local-path (concatenate string "/home/" (unix::getenv "USER") "/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/"))
+    ;;  ;(setq local-path (concatenate string "/home/" (unix::getenv "USER") "/" (unix::getenv "CNOID_WORKSPACE") "/" (send *robot* :name) "/" motionname "/"))
+    ;;  )
 
-  (setq *__fname__* (reg-replace* "^_" "" fname));; _fname->fname
+    (setq local-path (concatenate string "/home/" (unix::getenv "USER") "/"))
+    (setq *__fname__* (reg-replace* "^_" "" fname));; _fname->fname
+    (print *__fname__*)
   (setq motion-time (get-motion-time local-path *__fname__*))
 
   (unless zmp-offset (setq zmp-offset (calc-default-zmp-offset)))
@@ -315,11 +318,11 @@
           ))
     (warning-message 1 "Please release emergency~%")
     )
-    ))
+    )
   )
 
 (defun play-hrpsysfile (&rest args)
-  (when (boundp '*ci*) (apply #'play-hrpsysfile-old args))
+  (cwhen (boundp '*ci*) (apply #'play-hrpsysfile-old args))
   (when (boundp '*ri*) (apply #'play-hrpsysfile-impl args))
   )
 
@@ -703,7 +706,7 @@
   )
 
 (defun jump-test-old(&key (path "/home/konishi/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/") (fname "JAXON_BLUE_jump-150msec") (log-path "/home/konishi/log/log_blue/") (log-name "jump-test"))
-  (setq log-path "/home/leus/konishi_log/jump_150msec")
+  ;;(setq log-path "/home/leus/konishi_log/jump_150msec")
   (unix::system (concatenate string "mkdir " log-path log-name))
   (print "start-log and go to the init-pose")
   (send *ri* :start-log)
@@ -732,13 +735,14 @@
 ;; reset-pose
 
 (defun jump-test(&key (local-path "/home/konishi/catkin_ws/somersault_gen/src/jsk_choreonoid/sample/JumpSample/") (fname "JAXON_BLUE_jump-150msec") (log-path "/home/konishi/log/log_blue/") (log-name "jump-test"))
-  (setq log-path "/home/leus/konishi_log/jump_150msec")
+  ;(setq log-path "/home/leus/konishi_log/jump_150msec")
                                         ;(unix::system (concatenate string "mkdir " log-path log-name))
                                         ;(send *ri* :start-log)
   (unix::sleep 1)
   (print (concatenate string "do you want to execute" fname "? (yes/no)"))
   (if (equal "yes" (read-line))
                                         ;(send *ri* :load-pattern (concatenate string path fname)))
+      (print "hoge")
       (play-hrpsysfile-impl :fname "JAXON_BLUE_jump-150msec" :start-st nil)
       (print "do you want to execute save-log ? (yes/no)")
       (if (equal "yes" (read-line))
@@ -748,4 +752,25 @@
           (send *ri* :angle-vector (send *robot* :reset-pose))
         )
       )
+  )
+
+(defun ocp-jump-test(&key (local-path "/home/konishi/") (fname "backflip") (log-path "/home/konishi/log/log_blue/") (log-name "backflip-test"))
+                                        ;(setq log-path "/home/leus/konishi_log/jump_150msec")
+                                        ;(unix::system (concatenate string "mkdir " log-path log-name))
+                                        ;(send *ri* :start-log)
+  (unix::sleep 1)
+  (print (concatenate string "do you want to execute" fname "? (yes/no)"))
+  (if (equal "yes" (read-line))
+                                        ;(send *ri* :load-pattern (concatenate string path fname)))
+      (progn
+        (print "hoge")
+        (play-hrpsysfile-impl :fname fname :start-st nil)
+        (print "do you want to execute save-log ? (yes/no)")
+        (if (equal "yes" (read-line))
+            (send *ri* :save-log (concatenate string log-path log-name)))
+        (print "do you want to go to reset-pose ? (yes/no)")
+        (if (equal "yes" (read-line))
+            (send *ri* :angle-vector (send *robot* :reset-pose))
+          )
+        ))
   )

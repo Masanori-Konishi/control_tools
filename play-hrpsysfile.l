@@ -147,7 +147,8 @@
   (let ( motionname
          zmpline velfile optfile posfile zmpfile
          ;; (extention-list '("pos" "hip" "waist" "zmp" "vel" "optionaldata" "wrenches"))
-         (extention-list '("pos" "waist" "zmp" "hip" "optionaldata" "wrenches"))
+         ;; (extention-list '("pos" "waist" "zmp" "hip" "optionaldata" "wrenches"))
+         (extention-list '("pos" "waist" "zmp" "hip" "optionaldata" "wrenches" "torque"))
          )
 
     (if (not ofname) (setq ofname fname))
@@ -162,6 +163,7 @@
           posfile (concatenate string path fname ".pos")
           waistfile (concatenate string path fname ".waist")
           zmpfile (concatenate string path fname ".zmp")
+          torquefile (concatenate string path fname ".torque")
           numjoints (length (send *robot* :angle-vector))
           )
 
@@ -423,7 +425,7 @@
     (mapc #'(lambda (extemtion)
               (unix:system (concatenate string "head -n 1 " path fname "." extemtion "| cat >  " path fname "_init." extemtion)) )
           ;; (list "hip" "waist" "zmp" "vel" "pos" "optionaldata" "wrenches")
-          (list "waist" "hip" "zmp" "pos" "optionaldata" "wrenches") )
+          (list "waist" "hip" "zmp" "pos" "optionaldata" "wrenches" "torque") )
 
     ;; fname_init->_fname_init
     (copy-files :fname (concatenate string fname "_init") :sample-name sample-name :real real :remove-last-row nil :path path)
@@ -756,7 +758,7 @@
     )
   )
 
-(defun ocp-jump-test(&key (local-path "/home/konishi/") (fname "700ms") (log-path "/home/konishi/log/log_blue/") (log-name "700ms"))
+(defun ocp-jump-test(&key (local-path "/home/konishi/") (fname "backflip") (log-path "/home/konishi/log/log_blue/") (log-name "backflip_ok"))
                                         ;(setq log-path "/home/leus/konishi_log/jump_150msec")
                                         ;(unix::system (concatenate string "mkdir " log-path log-name))
                                         ;(send *ri* :start-log)
